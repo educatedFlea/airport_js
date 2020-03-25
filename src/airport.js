@@ -1,7 +1,14 @@
 'use strict';
 
 class Airport{
+	constructor(){
+		this._hangar = []
+	}
 	planes(){
-		return [];
+		return this._hangar;
+	};
+
+	clearForLanding(plane){
+		this._hangar.push(plane)
 	};
 };
