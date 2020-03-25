@@ -1,17 +1,22 @@
 # Airport Challenge in JavaScript
 
 ## TDD workflow: 
-## User stories #1
+1. Feature tests for each user stories
+2. Unit tests for each class involved in feature test
+3. Complete the code to pass unit tests which should also help to pass feature tests. 
+
+### User stories #1
 ```
 As an air traffic controller
 To get passengers to a destination
-I want to instruct a plane to land at an airport and confirm that it has landed
+I want to instruct a plane to land at an airport and  
+  confirm that it has landed
 ```
 1. Create feature test - first create `spec/featuresSpec.js`
 Assume there is an `airport` and it has a collection of `planes ` landed. 
 
 - 1st test: 
-When a `plane` landed at the `airport`, it should be included in `planes`. 
+when a `plane` landed at the `airport`, it should be included in `planes`. 
 
 
 2. Unit tests for `plane` and `airport` created in the first test 
@@ -47,6 +52,115 @@ Plane is doing everything it needs to, so now we need Airport to play its part, 
     - push plane to the array in when `clearForLanding` is called 
 
 #### Now all the feature tests and unit tests passed 
+
+
+### User stories #2 
+```
+As an air traffic controller
+To get passengers to a destination
+I want to instruct a plane to take off from
+  an airport and confirm that it is no longer in the airport
+```
+1. Create feature test - in `featureSpec.js` 
+
+- 1st test:
+when a `plane` takes off, it should be longer exists in `planes`.
+
+```javascript
+it('planes can be instructed to take off', function(){
+	plane.land(airport)
+	plane.takeoff();
+	expect(airport.plane()).not.toContain(plane);
+});
+```
+Now we have a failed feature test becasue we have not yet defined `takeoff`. Again, this feature tests involve 2 class, `Plane` and `Airport`, first write unit tests for them before we try to pass the feature test.
+
+2. Create unit test for `Plane` 
+
+- 2nd test:
+```javascript
+// in spec/planeSpec.js
+describe('Plane', function(){
+// existing codes ... 
+// add 'clearForTakeOff' to the stub!
+airport = jasmine.createSpyObj('airport',['clearForLanding','clearForTakeOff']);
+//... exist codes
+	it('can take off from an airport', function(){
+		plane.land(airport)
+		plane.takeoff();
+		expect(airport.clearForTakeOff).toHaveBeenCalled();
+	});
+});
+```
+Note that here we create new method `clearForTakeOff` for the class. 
+To pass the test: add function to `plane.js`. 
+	refactor from: 
+	```javascript
+	class Plane {
+		land(airport){
+			airport.clearForLanding(this)
+		};
+	};
+	```
+	to:
+	```javascript
+	class Plane {
+		// every plane object will have a 'location' property when initialized
+		constructor(){
+			this._location()
+		};
+	
+		land(airport){
+		// when they land the location will change to the argument passed 
+		// in this case they land at 'airport'
+			airport.clearForLanding(this)
+			this._location = airport
+		};
+
+		takeoff(){
+			// when they take off the location will be cleared.
+			this._location.clearForTakeoff()
+		};
+	};
+	```
+
+3. Now feature test still fails...
+```
+ ______________________________________ 
+/ Ugh! Let's create matching unit test \
+\ for 'Airport' now ...                /
+ -------------------------------------- 
+        \   ^__^
+         \  (xx)\_______
+            (__)\       )\/\
+             U  ||----w |
+                ||     ||
+```
+- 3rd test: no `plane` in `airport` after take off 
+```javascript 
+	it('can clear planes after takeoff', function(){
+		airport.clearForLanding(plane);
+		airport.clearForTakeOff(plane);
+		expect(airport.planes()).toEqual([]);
+	});
+```
+Now the errors (for both feature and unit tests) say it doesn't know what `clearForTakeOff` is.
+
+To pass the unit test: add the function in `airport.js`:
+```javascript
+	clearForTakeOff(plane){
+		this._hangar = [];
+	}
+```
+#### Now now, all the tests passed! (but hang on there are 2 more user stories! )
+
+	
+
+
+
+
+	 
+
 
 
 
