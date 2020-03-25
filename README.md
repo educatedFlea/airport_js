@@ -95,34 +95,35 @@ airport = jasmine.createSpyObj('airport',['clearForLanding','clearForTakeOff']);
 Note that here we create new method `clearForTakeOff` for the class. 
 To pass the test: add function to `plane.js`. 
 	refactor from: 
-	```javascript
-	class Plane {
-		land(airport){
-			airport.clearForLanding(this)
-		};
-	};
-	```
-	to:
-	```javascript
-	class Plane {
-		// every plane object will have a 'location' property when initialized
-		constructor(){
-			this._location()
-		};
-	
-		land(airport){
-		// when they land the location will change to the argument passed 
-		// in this case they land at 'airport'
-			airport.clearForLanding(this)
-			this._location = airport
-		};
 
-		takeoff(){
-			// when they take off the location will be cleared.
-			this._location.clearForTakeoff()
-		};
+```javascript
+class Plane {
+	land(airport){
+		airport.clearForLanding(this)
 	};
-	```
+};
+```
+	to:
+```javascript
+class Plane {
+	// every plane object will have a 'location' property when initialized
+	constructor(){
+		this._location()
+	};
+
+	land(airport){
+	// when they land the location will change to the argument passed 
+	// in this case they land at 'airport'
+		airport.clearForLanding(this)
+		this._location = airport
+	};
+
+	takeoff(){
+		// when they take off the location will be cleared.
+		this._location.clearForTakeoff()
+	};
+};
+```
 
 3. Now feature test still fails...
 ```
@@ -138,21 +139,98 @@ To pass the test: add function to `plane.js`.
 ```
 - 3rd test: no `plane` in `airport` after take off 
 ```javascript 
-	it('can clear planes after takeoff', function(){
-		airport.clearForLanding(plane);
-		airport.clearForTakeOff(plane);
-		expect(airport.planes()).toEqual([]);
-	});
+it('can clear planes after takeoff', function(){
+	airport.clearForLanding(plane);
+	airport.clearForTakeOff(plane);
+	expect(airport.planes()).toEqual([]);
+});
 ```
 Now the errors (for both feature and unit tests) say it doesn't know what `clearForTakeOff` is.
 
 To pass the unit test: add the function in `airport.js`:
 ```javascript
-	clearForTakeOff(plane){
-		this._hangar = [];
-	}
+clearForTakeOff(plane){
+	this._hangar = [];
+}
 ```
 #### Now now, all the tests passed! (but hang on there are 2 more user stories! )
+
+### User stories #3 
+```
+As an air traffic controller
+To ensure safety
+I want to prevent landing when weather is stormy
+```
+(spoiler alert: there will a new class soon @_@)
+1. Assume we will have a functio to determine weather, let's create a feature test for it(in `featureSpec.js`). 
+
+- 1st test:
+```javascript 
+it('can block take off when weather is stormy', function(){
+	plane.land(airport)
+	spyOn(airport,'isStormy').and.returnValue(true);
+	expect(function(){ plane.takeoff();}).toThrowError('cannot take off during storm');
+	expect(airport.planes()).toContain(plane);
+});
+```
+
+It fails because there's no such method 'isStormy'.
+
+2. Time to create a matching unit test for airport.
+
+- 2nd test: 
+```javascript
+// in spec/airportSpec.js
+it('can check for stormy conditions', function(){
+	expect(airport.isStormy()).toBeFalsy();
+});
+```
+To pass this unit test: add function in `airport.js`.
+Now feature test is throwing an error:
+```
+Feature Test: blocks takeoff when weather is stormy
+  Error: Expected function to throw an Error.
+  Error: Expected [  ] to contain Plane({ _location: Airport({ _hangar: [  ], isStormy: spy on isStormy }) }).
+```
+because at the moment it can still take off because we have not set ceveat(guard clause) in `airport.js`. 
+
+3. Create another unit test to match above error message.
+- 3rd test:
+```javascript
+// in spec/airportSpec.js
+// nested test for stormy scenarios: 
+describe('under stormy conditions', function(){
+	it('does not clear planes for takeoff', function(){
+		spyOn(airport,'isStormy').and.returnValue(true);
+		expect(function(){ airport.clearForTakeOff(plane);}).toThrowError('cannot take off during storm');
+	});
+});
+```
+Now both test has same error: 
+```
+Feature Test: > can block take off when weather is stormy
+Expected function to throw an Error.
+Error: Expected function to throw an Error.
+
+Airport > under stormy conditions > does not clear planes for takeoff
+Expected function to throw an Error.
+Error: Expected function to throw an Error.
+```
+
+4. Now try to pass the test(by adding the guard clause) before we go crazy. 
+```javascript
+// in airport.js, modify clearForTakeOff function 
+clearForTakeOff(plane){
+	if(this.isStormy()){
+		throw new Error('cannot take off during storm')
+	}
+	this._hangar = [];
+}
+```
+#### Can you believe we finished the 3rd user story! 
+
+
+
 
 	
 

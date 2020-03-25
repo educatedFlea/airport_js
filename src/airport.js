@@ -13,6 +13,13 @@ class Airport{
 	};
 
 	clearForTakeOff(plane){
+		if(this.isStormy()){
+			throw new Error('cannot take off during storm')
+		}
 		this._hangar = [];
 	}
+
+	isStormy(){
+		return false;
+	};
 };
