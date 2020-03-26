@@ -68,7 +68,7 @@ when a `plane` takes off, it should be longer exists in `planes`.
 
 ```javascript
 it('planes can be instructed to take off', function(){
-	plane.land(airport)
+	plane.land(airport);
 	plane.takeoff();
 	expect(airport.plane()).not.toContain(plane);
 });
@@ -85,10 +85,10 @@ describe('Plane', function(){
 // add 'clearForTakeOff' to the stub!
 airport = jasmine.createSpyObj('airport',['clearForLanding','clearForTakeOff']);
 //... exist codes
-	it('can take off from an airport', function(){
-		plane.land(airport)
-		plane.takeoff();
-		expect(airport.clearForTakeOff).toHaveBeenCalled();
+it('can take off from an airport', function(){
+	plane.land(airport)
+	plane.takeoff();
+	expect(airport.clearForTakeOff).toHaveBeenCalled();
 	});
 });
 ```
@@ -98,12 +98,13 @@ To pass the test: add function to `plane.js`.
 
 ```javascript
 class Plane {
-	land(airport){
-		airport.clearForLanding(this)
-	};
+land(airport){
+	airport.clearForLanding(this)
+};
 };
 ```
-	to:
+to:
+
 ```javascript
 class Plane {
 	// every plane object will have a 'location' property when initialized
@@ -161,7 +162,7 @@ As an air traffic controller
 To ensure safety
 I want to prevent landing when weather is stormy
 ```
-(spoiler alert: there will a new class soon @_@)
+
 1. Assume we will have a functio to determine weather, let's create a feature test for it(in `featureSpec.js`). 
 
 - 1st test:
@@ -206,7 +207,7 @@ describe('under stormy conditions', function(){
 	});
 });
 ```
-Now both test has same error: 
+Now both test have same error: 
 ```
 Feature Test: > can block take off when weather is stormy
 Expected function to throw an Error.
@@ -227,7 +228,229 @@ clearForTakeOff(plane){
 	this._hangar = [];
 }
 ```
-#### Can you believe we finished the 3rd user story! 
+#### Can you believe it we finished the 3rd user story! 
+
+### User stories #4
+```
+As an air traffic controller
+To ensure safety
+I want to prevent landing when weather is stormy
+```
+(spoiler alert: there will a new class soon @_@)
+
+So far the `airport` model has too much responsibilty, we want to separate `isStormy` to a new class. 
+
+1. Create a unit test for `Weather` class.
+- 1st test
+```javascript 
+// create weatherSpec.js
+describe('Weather', function(){
+	var weather;
+	beforeEach(function(){
+		weather = new Weather();
+
+	it('gives stormy sometimes',function(){
+		spyOn(Math,'random').and,returnValue(1);
+		expect(weather.isStormy()).toBeTruthy();
+	});
+
+	it('gives sunny sometimes', function(){
+		spyOn(Math,'random').and.returnValue(0);
+		expect(weather.isStormy()).toBeFalsy();
+	});
+	});
+});
+``` 
+
+2. Create Weather class and add function to pass these tests:
+```javascript
+// in weather.js
+'use strict';
+
+class Weather {
+  constructor(){
+	this._CHANCE_OF_STORMY = 0.5;
+	}
+	isStormy(){
+		return (Math.random() > this._CHANCE_OF_STORMY);
+	}
+}
+```
+
+3. Link `weather` to the airport
+```javascript
+// in airport.js
+'use strict';
+
+class Airport{
+	constructor(weather){
+		// if the weather is not undefined, return weather; otherwise create a new Weather object. 
+		this._weather = typeof weather !== 'undefined' ? weather : new Weather();
+		this._hangar = []
+	}
+// leave out unrefactored codes...
+	clearForTakeOff(plane){
+		if(this._weather.isStormy()){
+			throw new Error('cannot take off during storm')
+		}
+		this._hangar = [];
+	}
+};
+```
+Now the tests are randomly pass or fail thanks to the value return by `random`.  
+
+4. (Major) Refactor feature tests.
+```javascript
+// in featureSpec.js
+'use strict';
+describe('Feature Test:', function(){
+	var plane;
+	var airport;
+
+	beforeEach(function(){
+		plane = new Plane();
+		airport = new Airport();
+	});
+	// tests for sunny weathers, hence we put stub for random to return 0 before each tests.
+	describe('under normal conditions',function(){
+		beforeEach(function(){
+			spyOn(Math,'random').and.returnValue(0);
+		});
+
+		it('planes can be instructed to land at an airport',function(){
+			plane.land(airport);
+			expect(airport.planes()).toContain(plane);
+		});
+
+		it('planes can be instructed to take off', function(){
+			plane.land(airport)
+			plane.takeoff();
+			expect(airport.planes()).not.toContain(plane);
+		});
+	});
+	
+	// tests for stormy weather.
+	describe('under stormy conditions', function(){
+		it('can block take off when weather is stormy', function(){
+			spyOn(Math,'random').and.returnValue(0);
+			plane.land(airport)
+			spyOn(airport,'isStormy').and.returnValue(true);
+			expect(function(){ plane.takeoff();}).toThrowError('cannot take off during storm');
+			expect(airport.planes()).toContain(plane);
+		});
+
+		it('blocks landing when weather is stormy',function(){
+			spyOn(Math,'random').and.returnValue(1);
+			expect(function(){plane.land(airport); }).toThrowError('cannot land during strom');
+		});
+});
+});
+```
+```javascript
+// in airportSpec.js
+'use strict';
+
+describe('Airport', function(){
+	var airport;
+	var plane;
+	var weather;
+
+	beforeEach(function(){
+		plane = jasmine.createSpy('plane');
+		weather = jasmine.createSpyObj('weather', ['isStormy']);
+		airport = new Airport(weather);
+	});
+
+	it('has no planes by default', function(){
+		expect(airport.planes()).toEqual([]);
+	});
+
+	describe('under normal weather',function(){
+		beforeEach(function(){
+			weather.isStormy.and.returnValue(false);
+		});
+
+		it('can clear planes for landing', function(){
+			airport.clearForLanding(plane);
+			expect(airport.planes()).toEqual([plane]);
+		});
+
+		it('can clear planes after takeoff', function(){
+			airport.clearForLanding(plane);
+			airport.clearForTakeOff(plane);
+			expect(airport.planes()).toEqual([]);
+		});
+	});
+
+	// it('can check for stormy conditions', function(){
+	// 	expect(airport.isStormy()).toBeFalsy();
+	// });
+
+	// nested test for stormy scenarios: 
+	describe('under stormy conditions', function(){
+		beforeEach(function(){
+			weather.isStormy.and.returnValue(true);
+		});
+
+		it('does not clear planes for takeoff', function() {
+			expect(function(){ airport.clearForTakeOff(plane); }).toThrowError('cannot take off during storm');
+		});
+
+		it('does not clear planes for landing', function(){
+			expect(function(){ airport.clearForLanding(plane); }).toThrowError('cannot land during storm');
+		});
+
+	});
+});
+
+```
+
+Now the tests failed (and they are matching!) because we have not raise error in `land` yet. 
+
+5. To pass the last failing tests:
+```javascript
+// in airport.js 
+
+class Airport{
+	constructor(weather){
+		// !!! 1. add condition for weather when initialise
+		this._weather = typeof weather !== 'undefined' ? weather : new Weather();
+		this._hangar = []
+	}
+
+	planes(){
+		return this._hangar;
+	};
+	// !!! 2. add gaurd clause for landing. 
+	clearForLanding(plane){
+		if(this._weather.isStormy()){
+			throw new Error('cannot land during storm');
+		}
+		this._hangar.push(plane)
+	};
+
+	clearForTakeOff(plane){
+		if(this._weather.isStormy()){
+			throw new Error('cannot take off during storm');
+		}
+		this._hangar = [];
+	}
+
+	isStormy(){
+		return false;
+	};
+};
+```
+
+#### Voila! All done!
+```
+ _____ _             _ _       _ 
+|  ___(_)_ __   __ _| | |_   _| |
+| |_  | | '_ \ / _` | | | | | | |
+|  _| | | | | | (_| | | | |_| |_|
+|_|   |_|_| |_|\__,_|_|_|\__, (_)
+                         |___/   
+```
 
 
 

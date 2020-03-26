@@ -2,7 +2,7 @@
 
 describe('Plane', function(){
 	var plane;
-	var airport; 
+	var airport;
 	
 	beforeEach(function(){
 		plane = new Plane();
